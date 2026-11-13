@@ -26,3 +26,9 @@ Production jemalloc **5.4.0 profiling was enabled as of 2026-11-13**, supersedin
 ## Boundaries
 
 Production server `HOST_PROD` is read-only; **never** deploy hooks, modify files, freeze/unfreeze/restart, or run new high-overhead profiles. SSH inventory found only production. GitHub 2026-11 usage summary was readable and reported zero billed Actions net cost to date, but no effective zero-overage budget/stop setting was verified. Do not start GitHub Actions unless zero extra billing risk is established. Do not use paid API/cloud resources. Use Evario J01/J02/J03/J04/J06/J07/J08 as decision gates. Maintain Issues, PRs, this HANDOFF and independently verified artifacts.
+
+## 2026-11-14 verified production snapshot comparison (read-only)
+
+Two already-captured profiles from PID 467575 (09:03 and 19:33 on 2026-11-13) were read via read-only SFTP and parsed per stack, using the official jemalloc `heap_v2` Poisson adjustment. In-use samples 1,606→2,125; stacks containing raw main-image return PC EA `0x71439E0` 719→1,182. **Estimated weighted** `inuse_space` all paths 1,702.573→2,220.286 MiB (+517.713 MiB); OnHit-associated stack 719.036→1,182.060 MiB (+463.024 MiB), **89.4% of weighted difference**. This is stronger stack attribution, **not object-level leak proof**. No new production samples or code changes were made. Full method and raw-vs-weighted cautions: `docs/heap-profile-observations.md`; offline parser: `tools/heap_v2_summary.py`; test: `python3 tests/test_heap_v2.py`.
+
+Official Endstone v0.11.15 source review confirms Clang+Ninja and Linux libc++/libc++abi build requirements. Local container has clang and Ninja but lacks libc++ headers; no official SDK build or isolated BDS Hook acceptance occurred. Continue #1/#2/#3. Experimental source remains **draft** and should not be activated on production.
