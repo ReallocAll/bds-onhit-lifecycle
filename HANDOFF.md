@@ -49,3 +49,17 @@ Official Endstone v0.11.15 source review confirms Clang+Ninja and Linux libc++/l
 - `Disabling onhit_lifecycle v0.1.0`, graceful stop, no residual BDS processes
 
 This **closes the passive load/integrity smoke gate** (Stage B) and confirms a zero-additional-cost actual BDS execution path. It does **not** establish detour ABI/unwind or any OnHit leak. Continue with Endstone-bot Beta API two-start initialization and autonomous Shulker projectile trigger in the Testbed experiment branch; still prohibit active hooks until the target ABI, prologue and unwind gates are cleared.
+
+## 2026-11-14 fully unattended Shulker projectile environment — PASS
+
+[bedrock-testbed run 43490505011](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43490505011) on `experiment/onhit-shulker` commit `b4f42d3a3890972a67ef352d73b3a59d3babe725` **passed** the complete headless environment setup and **observed an actual vanilla `shulker_bullet`** inside isolated BDS 1.26.60.6. OnHit native plugin pinned to `7e8940dd99a7a209d3fec8a602a784ab67a4b6a2`; bot plugin pinned to `4bd0691f1ef0f551e5ba258d4747b35a3b748177`.
+
+- Bootstrap / initial bot enable: installs EndstoneBot Behavior Pack 4.3.3 and writes `plugins/bot/enable_beta.py`.
+- Gracefully stop BDS; execute the emitted Beta APIs patch on the *same* world only while BDS stopped. Patch reports `Beta APIs enabled successfully`.
+- Start BDS again: logs confirm `Experiment(s) active: gtst`, Bridge protocol 3 authenticated and `standalone SimulatedPlayer 功能可用`.
+- Difficulty Normal. Console `bot createat` spawns a Survival SimulatedPlayer `OnHitTarget` and BDS player list independently reports that name online.
+- Wait for generated chunk after fake player joins, then `fill` reports **169 blocks filled**, bot `moveat` succeeds, **three** `summon shulker` commands report `Object successfully summoned`.
+- Third server-side entity selector check executes `say ONHIT_BULLET_OBSERVED`; console shows `[] ONHIT_BULLET_OBSERVED` and JSON reports `shulker_bullet_observed: true`, `bullet_queries: 3`.
+- Both passive plugin and bot stop cleanly. Output is preserved in the public GitHub Actions run logs; no world, BDS binary or sensitive artifacts uploaded. This is repeatable and does **not** require a human client.
+
+**Meaning:** Stage B and the *Shulker projectile availability* part of Stage C are proven. **Not proven**: the projectile made contact with a target; the specific OnHit factory path fired; any native detour is ABI/unwind safe; lifecycle/alias/free events; a leak; or any fix. Hook remains compile-time OFF. The next highest-value task is exact ELF prologue/callsite/ABI verification, then isolated active Hook with a real hit oracle and lifetime tracing. Keep both Draft PRs open until appropriate proof.
