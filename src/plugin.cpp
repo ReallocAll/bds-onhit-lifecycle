@@ -4,7 +4,7 @@
 #include "trace.hpp"
 
 #include <algorithm>
-#include <chrono>
+#include <cerrno>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -49,6 +49,7 @@ std::uint64_t timestamp() noexcept {
 void emit(onhit::EventKind kind, std::uintptr_t record, std::uintptr_t a2,
           std::uintptr_t a3, std::uintptr_t a4, std::uint64_t rax,
           std::uintptr_t caller) noexcept {
+    const int prior_errno = errno;
     onhit::Event e{};
     e.kind = kind;
     e.timestamp_ns = timestamp();
@@ -80,6 +81,7 @@ void emit(onhit::EventKind kind, std::uintptr_t record, std::uintptr_t a2,
         }
     }
     g_trace.push(e);
+    errno = prior_errno;
 }
 
 // These signatures are hypotheses from a bounded static ABI export, not proven contracts.

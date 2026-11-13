@@ -42,6 +42,6 @@ Disable the entire plugin in the isolated server (`plugins/` removal while stopp
 
 ## Project state
 
-See [HANDOFF.md](HANDOFF.md) for exact verified state, [evidence](docs/evidence.md), [ABI gate](docs/abi.md), [test plan](docs/runtime-plan.md) and Issues [#1](https://github.com/ReallocAll/bds-onhit-lifecycle/issues/1), [#2](https://github.com/ReallocAll/bds-onhit-lifecycle/issues/2), [#3](https://github.com/ReallocAll/bds-onhit-lifecycle/issues/3), [#4](https://github.com/ReallocAll/bds-onhit-lifecycle/issues/4).
+See [HANDOFF.md](HANDOFF.md) for exact verified state, [evidence](docs/evidence.md), [ABI gate](docs/abi.md), [test plan](docs/runtime-plan.md), [executed checks](docs/test-results.md) and Issues [#1](https://github.com/ReallocAll/bds-onhit-lifecycle/issues/1), [#2](https://github.com/ReallocAll/bds-onhit-lifecycle/issues/2), [#3](https://github.com/ReallocAll/bds-onhit-lifecycle/issues/3), [#4](https://github.com/ReallocAll/bds-onhit-lifecycle/issues/4).
 
 Original investigation capsule: `IMPLEMENTATION_HANDOFF_PACKAGE.zip`, SHA-256 `9d7ab8b6f23948089ae05f8754d622f40c9dcfaead886281ef864d7b4612360f`. The capsule is not copied into this repository: it includes raw paths and broad investigative context, and it lacks the BDS binary and IDB. Recover it from the user-provided original artifact.

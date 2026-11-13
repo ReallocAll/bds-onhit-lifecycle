@@ -1,6 +1,6 @@
 # Isolated runtime acceptance plan (not executed)
 
-1. **Select a zero-new-cost isolation path**, never production. Current SSH inventory lists `HOST_PROD` only. GitHub Actions billing/remaining free minutes could not be verified; **no workflow was triggered**. Avoid paid runners/cloud VMs.
+1. **Select a zero-new-cost isolation path**, never production. Current SSH inventory lists `HOST_PROD` only. GitHub Actions 2026-11 billing usage was inspected through the current GitHub API; however, **no effective spend-stopping budget was verified**, so **no workflow was triggered**. Avoid paid runners/cloud VMs.
 2. Obtain an isolated copy of the *exact* 265,500,280-byte BDS ELF and Endstone v0.11.15; compare SHA-256 and GNU Build ID. Do not assume version string compatibility is enough.
 3. Resolve the ABI/unwind issues in `abi.md`; then build and install diagnostic hooks only in the isolated test server. Run no-trigger start/stop and validate capture integrity, count, dropped/truncated events. Do not hot reload live detours.
 4. Reproduce relevant entity/OnHit configuration; do not assume `ShulkerBullet` maps to the suspect path. Establish exact event/record mapping before attribution.

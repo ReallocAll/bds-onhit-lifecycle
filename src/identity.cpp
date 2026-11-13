@@ -93,15 +93,15 @@ Identity inspect_executable() {
     Identity result;
     result.sha256 = file_sha256(result.error);
     if (result.sha256.empty()) return result;
-    if (result.sha256 != kExpectedSha256) {
-        result.error = "executable SHA-256 does not match the investigated BDS";
-        return result;
-    }
     MainImage image;
     dl_iterate_phdr(find_main, &image);
     if (!image.found) { result.error = "main ELF image not found"; return result; }
     result.load_bias = image.bias;
     result.build_id = build_id(image);
+    if (result.sha256 != kExpectedSha256) {
+        result.error = "executable SHA-256 does not match the investigated BDS";
+        return result;
+    }
     if (result.build_id != kExpectedBuildId) {
         result.error = "GNU Build ID missing or different";
         return result;

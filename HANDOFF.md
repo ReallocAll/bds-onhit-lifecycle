@@ -7,7 +7,7 @@ Updated 2026-11-14 (Asia/Taipei). This private GitHub repository is the project 
 - **Repo**: `ReallocAll/bds-onhit-lifecycle`, private. `main` was initialized with a conservative README; implementation is in `feat/identity-and-diagnostic-scaffold` until PR approval/merge.
 - **Issues**: #1 exact binary and ABI; #2 native diagnostics; #3 zero-cost isolated runtime and pointer/heap evidence; #4 conditional fix, never speculative.
 - **Source**: CMake pinned Endstone v0.11.15; Linux executable SHA/Build ID/load-bias guard; default passive plugin; experimental compile-time gated three function detours; fixed 32768-slot capture buffer, overflow/truncation counters and quiescent TSV output.
-- **Local checks**: C++ compiler/GCC, OpenSSL; CMake tests with `-DONHIT_BUILD_PLUGIN=OFF` passed (identity mismatch refusal, multithread bounded trace). **Official Endstone plugin not built**; no BDS binary in the ZIP, no isolated BDS runtime, no target Hook validation.
+- **Local checks**: C++ compiler/GCC, OpenSSL; CMake tests with `-DONHIT_BUILD_PLUGIN=OFF` passed (2/2: identity mismatch refusal and Build-ID extraction, multithread bounded trace). The same 2/2 passed with ASan+UBSan; plugin syntax checked only against temporary stubs, **not** Endstone. **Official Endstone plugin not built**; no BDS binary in the ZIP, no isolated BDS runtime, no target Hook validation.
 - **Unresolved**: ABI/prologue/callsite and funchook unwind; runtime vptr/child identity, alias owners, allocations/frees; controlled weighted retained bytes; performance. Current experimental detours are a scaffold, not an approved runtime tool.
 - **Leak/fix**: neither confirmed nor excluded; no fix implemented.
 
@@ -25,4 +25,4 @@ Production jemalloc **5.4.0 profiling was enabled as of 2026-11-13**, supersedin
 
 ## Boundaries
 
-Production server `HOST_PROD` is read-only; **never** deploy hooks, modify files, freeze/unfreeze/restart, or run new high-overhead profiles. SSH inventory found only production. Do not start GitHub Actions unless free remaining budget and zero billing risk are verified. Do not use paid API/cloud resources. Use Evario J01/J02/J03/J04/J06/J07/J08 as decision gates. Maintain Issues, PRs, this HANDOFF and independently verified artifacts.
+Production server `HOST_PROD` is read-only; **never** deploy hooks, modify files, freeze/unfreeze/restart, or run new high-overhead profiles. SSH inventory found only production. GitHub 2026-11 usage summary was readable and reported zero billed Actions net cost to date, but no effective zero-overage budget/stop setting was verified. Do not start GitHub Actions unless zero extra billing risk is established. Do not use paid API/cloud resources. Use Evario J01/J02/J03/J04/J06/J07/J08 as decision gates. Maintain Issues, PRs, this HANDOFF and independently verified artifacts.
