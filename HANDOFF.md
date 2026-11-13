@@ -2,6 +2,16 @@
 
 Updated 2026-11-14 (Asia/Taipei). This public GitHub repository is the project state record. Supplement it with original `IMPLEMENTATION_HANDOFF_PACKAGE.zip` (SHA-256 `9d7ab8b6f23948089ae05f8754d622f40c9dcfaead886281ef864d7b4612360f`).
 
+## Current verified checkpoint (2026-11-14 04:51 Asia/Taipei)
+
+This section supersedes earlier chronological statements below that say the official SDK, passive BDS load, or unattended Shulker bullet environment have not been tested. Historical entries are retained as an audit trail.
+
+- OnHit development head before this checkpoint: `f138df7c591bc5d91b00d9a678229443c619fdd9`; baseline `main`: `6f00c63968ba9a8192073b47bbf7ec096c32cfd1`. Draft PR [#5](https://github.com/ReallocAll/bds-onhit-lifecycle/pull/5) remains open.
+- Testbed `experiment/onhit-shulker`: `b4f42d3a3890972a67ef352d73b3a59d3babe725`, [draft PR #29](https://github.com/ReallocAll/bedrock-testbed/pull/29); Testbed `main`: `69ff87eac8d05a0c1da4ccb387005d32012e0003` (unchanged). Bot `main`: `4bd0691f1ef0f551e5ba258d4747b35a3b748177`.
+- Official SDK build [43486566882](https://github.com/ReallocAll/bds-onhit-lifecycle/actions/runs/43486566882), isolated passive BDS [43487320217](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43487320217), and unattended actual `shulker_bullet` observation [43490505011](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43490505011) are **passed**. The Testbed still pins OnHit `7e8940dd99a7a209d3fec8a602a784ab67a4b6a2`; later documentation commits are not separately runtime-tested.
+- **Critical unverified gate:** `docs/abi.md` target entry bytes/callsites/argument and return ABI, funchook trampoline unwind, detour uninstall quiescence. `src/plugin.cpp::emit` currently dereferences a hypothesized record and vector with `memcpy`; checking vector ordering does not prove address readability, lifetime, or thread safety. Never activate these experimental detours on the strength of the passive tests. Also prove an actual projectile **contact**, not just bullet existence.
+- No allocation-generation/alias/free evidence, matched hit/no-hit retained-memory cohorts, object-level leak proof, or remediation exists. Do not merge either draft or disable the recurring investigation. No new Actions run was triggered for this checkpoint.
+
 ## Status
 
 - **Repo**: `ReallocAll/bds-onhit-lifecycle`, public. `main` was initialized with a conservative README; implementation is in `feat/identity-and-diagnostic-scaffold` until PR approval/merge.
