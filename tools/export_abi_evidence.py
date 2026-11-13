@@ -46,7 +46,7 @@ def main():
         print(f"\n=== callsite vicinity 0x{ea:x} ===")
         print(run("objdump", "-d", "-M", "intel", "--show-raw-insn",
                   f"--start-address={ea-64}", f"--stop-address={ea+64}", str(path)))
-    print("\\nReview register and stack dataflow beyond each window; no automatic ABI verdict.")
+    print("\nReview register and stack dataflow beyond each window; no automatic ABI verdict.")
 
 
 if __name__ == "__main__":
