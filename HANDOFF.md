@@ -73,3 +73,10 @@ This **closes the passive load/integrity smoke gate** (Stage B) and confirms a z
 - Both passive plugin and bot stop cleanly. Output is preserved in the public GitHub Actions run logs; no world, BDS binary or sensitive artifacts uploaded. This is repeatable and does **not** require a human client.
 
 **Meaning:** Stage B and the *Shulker projectile availability* part of Stage C are proven. **Not proven**: the projectile made contact with a target; the specific OnHit factory path fired; any native detour is ABI/unwind safe; lifecycle/alias/free events; a leak; or any fix. Hook remains compile-time OFF. The next highest-value task is exact ELF prologue/callsite/ABI verification, then isolated active Hook with a real hit oracle and lifetime tracing. Keep both Draft PRs open until appropriate proof.
+
+## 2026-11-14 05:51 checkpoint — scalar-only hook capture
+
+- At OnHit commit `8498b59b7aeda45019586b69ad39bb5ab379f892`, removed the speculative `record+0x120` and child-array `memcpy` operations from `src/plugin.cpp::emit`. If experimental detours are eventually enabled, their event capture now records only scalar arguments, return values, caller, timestamp and thread ID. Existing vector/child TSV columns remain but are zero/invalid; **do not interpret them as observed empty vectors**.
+- This removes one unsafe dereference path, **not** the ABI/prologue/trampoline/unwind/uninstall gate. Hook activation is still prohibited pending independent exact-ELF proof. It also does not establish a lifetime or leak diagnosis.
+- Previous descriptions of active snapshot collection refer to historical source. No new CI or isolated BDS run is claimed for this commit. Testbed continues to pin `7e8940dd99a7a209d3fec8a602a784ab67a4b6a2`; neither Testbed main nor its experiment branch was changed this round.
+- Next: obtain bounded exact-ELF prologue/callsite disassembly and funchook unwind/quiescence proof, then add ownership-aware observation only after validated memory-access and concurrency assumptions. Do not reintroduce unchecked `memcpy` merely to populate legacy TSV fields.
