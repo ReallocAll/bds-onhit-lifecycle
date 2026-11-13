@@ -152,7 +152,8 @@ void uninstall() noexcept {
 }
 #endif
 
-class Plugin final : public endstone::Plugin {
+// ENDSTONE_PLUGIN generates a subclass implementing getDescription().
+class Plugin : public endstone::Plugin {
 public:
     void onLoad() override {
         const auto identity = onhit::inspect_executable();
