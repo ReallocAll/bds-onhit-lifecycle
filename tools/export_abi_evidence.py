@@ -28,21 +28,22 @@ def main():
     path = pathlib.Path(sys.argv[1]).resolve(strict=True)
     if not path.is_file():
         sys.exit("not a regular file")
-    digest = hashlib.file_digest(path.open("rb"), "sha256").hexdigest()
+    with path.open("rb") as stream:
+        digest = hashlib.file_digest(stream, "sha256").hexdigest()
     notes = run("readelf", "-n", str(path))
-    ids = re.findall(r"Build ID:\\s*([0-9a-fA-F]+)", notes)
+    ids = re.findall(r"Build ID:\s*([0-9a-fA-F]+)", notes)
     if digest != EXPECTED_SHA256 or EXPECTED_BUILD_ID not in [x.lower() for x in ids]:
         sys.exit("REFUSED: ELF SHA-256 or GNU Build ID does not match target")
     print("EXACT ELF identity PASS:", digest, EXPECTED_BUILD_ID)
     print("Read-only static evidence; ABI, trampoline unwind and quiescence NOT verified.")
-    print("\\n=== Program headers ===")
+    print("\n=== Program headers ===")
     print(run("readelf", "-W", "-l", str(path)))
     for name, ea in ENTRIES.items():
-        print(f"\\n=== {name} entry 0x{ea:x} (raw bytes and instructions) ===")
+        print(f"\n=== {name} entry 0x{ea:x} (raw bytes and instructions) ===")
         print(run("objdump", "-d", "-M", "intel", "--show-raw-insn",
                   f"--start-address={ea}", f"--stop-address={ea+128}", str(path)))
     for ea in CALLSITES:
-        print(f"\\n=== callsite vicinity 0x{ea:x} ===")
+        print(f"\n=== callsite vicinity 0x{ea:x} ===")
         print(run("objdump", "-d", "-M", "intel", "--show-raw-insn",
                   f"--start-address={ea-64}", f"--stop-address={ea+64}", str(path)))
     print("\\nReview register and stack dataflow beyond each window; no automatic ABI verdict.")
