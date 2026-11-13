@@ -60,26 +60,9 @@ void emit(onhit::EventKind kind, std::uintptr_t record, std::uintptr_t a2,
     e.args[1] = a3;
     e.args[2] = a4;
     e.raw_rax = rax;
-    if (record) {
-        // +0x120 / +0x128 / +0x130, the three-pointer vector in the handoff.
-        std::uintptr_t triple[3]{};
-        std::memcpy(triple, reinterpret_cast<const void*>(record + 0x120), sizeof(triple));
-        e.vector_begin = triple[0];
-        e.vector_end = triple[1];
-        e.vector_capacity = triple[2];
-        if (triple[0] <= triple[1] && triple[1] <= triple[2] &&
-            ((triple[1] - triple[0]) % sizeof(std::uintptr_t)) == 0 &&
-            ((triple[2] - triple[0]) % sizeof(std::uintptr_t)) == 0 &&
-            (triple[2] - triple[0]) <= 1024 * 1024) {
-            e.vector_valid = true;
-            e.child_count = static_cast<std::uint32_t>((triple[1] - triple[0]) / sizeof(std::uintptr_t));
-            e.captured_children = std::min<std::uint32_t>(e.child_count, onhit::kChildrenPerSnapshot);
-            if (e.captured_children) {
-                std::memcpy(e.children, reinterpret_cast<const void*>(triple[0]),
-                            e.captured_children * sizeof(std::uintptr_t));
-            }
-        }
-    }
+    // Scalar-only instrumentation until record lifetime, layout and synchronization
+    // are established against the exact target ELF. Never dereference an inferred
+    // record or child vector on an untrusted hook path.
     g_trace.push(e);
     errno = prior_errno;
 }
