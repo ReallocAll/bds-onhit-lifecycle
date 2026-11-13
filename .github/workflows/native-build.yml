@@ -3,8 +3,6 @@ name: Native Endstone SDK build
 on:
   push:
     branches: [feat/identity-and-diagnostic-scaffold]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
