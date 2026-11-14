@@ -1,4 +1,5 @@
 #include <endstone/endstone.hpp>
+#include <endstone/event/actor/actor_damage_event.h>
 
 #include "identity.hpp"
 #include "trace.hpp"
@@ -145,6 +146,7 @@ public:
                                 identity.error, identity.sha256);
             return;
         }
+        identity_verified_ = true;
         getLogger().info("Exact BDS image verified; load bias=0x{:x}", identity.load_bias);
 #ifndef ONHIT_ENABLE_EXPERIMENTAL_HOOKS
         getLogger().warning("Diagnostics passive only; hooks were excluded at build time.");
@@ -162,6 +164,25 @@ public:
         active_ = true;
         getLogger().warning("EXPERIMENTAL OnHit hooks active in isolated BDS. Never use on production.");
 #endif
+    }
+
+    // Independent gameplay oracle: verifies an actual projectile damaged the
+    // Survival SimulatedPlayer. Uses Endstone's public event API, not a detour.
+    void onEnable() override {
+        const char* consent = std::getenv("BDS_ONHIT_CONTACT_PROBE");
+        if (!identity_verified_ || !consent ||
+            std::string_view(consent) != "I_CONFIRM_ISOLATED_BDS") return;
+        registerEvent(&Plugin::onActorDamage, *this);
+        getLogger().info("ONHIT_CONTACT_PROBE_READY");
+    }
+
+    void onActorDamage(endstone::ActorDamageEvent& event) {
+        if (event.getActor().getName() != "OnHitTarget") return;
+        const auto& source = event.getDamageSource();
+        const auto* direct = source.getDamagingActor();
+        getLogger().info("ONHIT_CONTACT receiver={} source={} direct={} damage={}",
+                         event.getActor().getName(), source.getType(),
+                         direct ? direct->getType() : "none", event.getDamage());
     }
 
     void onDisable() override {
@@ -198,6 +219,7 @@ public:
     }
 
 private:
+    bool identity_verified_ = false;
 #ifdef ONHIT_ENABLE_EXPERIMENTAL_HOOKS
     bool active_ = false;
 #endif
