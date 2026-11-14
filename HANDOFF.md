@@ -2,6 +2,17 @@
 
 Updated 2026-11-14 (Asia/Taipei). This public GitHub repository is the project state record. Supplement it with original `IMPLEMENTATION_HANDOFF_PACKAGE.zip` (SHA-256 `9d7ab8b6f23948089ae05f8754d622f40c9dcfaead886281ef864d7b4612360f`).
 
+## 2026-11-14 14:19 Asia/Taipei — live funchook Parse/Reset/Cleanup verified in isolated BDS
+
+This **supersedes** older lines in this document claiming all native hooks remain unexecuted.
+
+- **Implementation:** OnHit source `ddc6e246c486e7f65dba613f500f377c1f3285f6` provides explicit opt-in `BDS_ONHIT_ISOLATED_TEST=I_CONFIRM_ISOLATED_BDS`, exact running BDS SHA/BuildID gate, default OFF `ONHIT_ENABLE_EXPERIMENTAL_HOOKS`, and scoped `BDS_ONHIT_HOOK_SCOPE=parse|all`. The active CMake build statically links upstream funchook v1.1.3 at **`88388db3c69e16c1560fee65c6857d75f5ce6fd5`** and its git-pinned diStorm submodule. There is no Endstone kernel modification.
+- **Parse-only first run:** isolated Testbed [43565136065](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43565136065), commit `1804fd6f09de6d3fd2c3c3270df7d628000f352b`, **PASS**. Native hook installed on exact BDS 1.26.60.6; 9 ParseEnter / 9 ParseExit, 18 trace rows, **0 dropped**, preserved Shulker bullet + Survival simulated-player projectile damage=4, clean BDS stop and trace flush.
+- **Full three-entry run:** isolated Testbed [43565510800](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43565510800), commit `b1d4d3bf786526ab589f120e02bd25d652219697`, **PASS**. `BDS_ONHIT_HOOK_SCOPE=all` installed Parse `0x7143660`, Reset `0x7143370`, Cleanup `0x7757840`. From actual onDisable `trace.tsv` and acceptance JSON: **Parse 3/3, Reset 3/3, Cleanup 1/1 Enter/Exit**, 14 rows total, `attempted=14;dropped=0;truncated_child_pointers=0`. The same run observed actual `minecraft:shulker_bullet` damage to `OnHitTarget` (4), successful detour uninstallation/trace output and normal shutdown. Passive BDS validation remained successful before the active run.
+- **What this proves:** all three requested native function entry detours and their original-call/trampoline roundtrips **work on these exercised runtime paths** in the exact isolated BDS. It does not prove all exceptional/unwind paths or concurrent uninstallation, and it does not prove the three events refer to the same child or generation.
+- **What remains:** classify actual per-record identity/generation, child allocation/alias/deleting wrapper and final free; compare isolated matched hit/no-hit retained bytes (weighted `inuse_space`); prove/refute leak and only then apply any fix. A cleanup function **entry** is not proof of a C++ child delete/free. No production modifications, paid runner or core patches, and neither draft PR merged.
+- Existing historical notes were written before these runs and must not be read as the current completion status. Keep both PRs draft and the recurring task enabled until full object-lifecycle and memory acceptance.
+
 ## Current verified checkpoint (2026-11-14 04:51 Asia/Taipei)
 
 This section supersedes earlier chronological statements below that say the official SDK, passive BDS load, or unattended Shulker bullet environment have not been tested. Historical entries are retained as an audit trail.
