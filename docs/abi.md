@@ -68,3 +68,15 @@ Source: [isolated Testbed run 43529829494](https://github.com/ReallocAll/bedrock
 - **Exporter caveat**: the fixed `--stop-address` windows cut through instructions at their far edge (e.g. reset `0x71433ef` and cleanup `0x77578ba`). Such terminal `.byte` fragments are an artifact of the window, **not evidence of malformed BDS code**. Interpret only complete instructions at known entry/callsite boundaries.
 
 **Decision**: retain compile-time-disabled hooks. Next obtain a validated signature and relocation/unwind behavior (including tail-jump and concurrent uninstall), then execute a minimal isolated install/uninstall and actual projectile-contact probe. Do not infer frees from cleanup entry. This review follows Evario's separation of static hook inspection from runtime proof (Endstone commit `ddd2699` case) and minimal evidence-gated implementation.
+
+## Isolated active funchook result — 2026-11-14
+
+The prior **never-enable-until-perfect-ABI** static warning was superseded **for the specifically authorized isolated experiment only**. It was not an ABI correctness proof. Active C++ detours have now been installed and executed in an ephemeral exact-ELF BDS test using opt-in `BDS_ONHIT_ISOLATED_TEST` and build flag `ONHIT_ENABLE_EXPERIMENTAL_HOOKS=ON`.
+
+- Single Parse entry, [CI 43565136065](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43565136065): 9 Enter / 9 Exit, 0 lost; real Shulker bullet damage; successful native `funchook_install`, trampoline call, `funchook_uninstall`, trace write and BDS shutdown.
+- Parse+Reset+Cleanup, [CI 43565510800](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43565510800): Parse 3/3, Reset 3/3, Cleanup 1/1 Enter/Exit, 14 trace rows, 0 drops; real simulated-player Shulker bullet damage and clean shutdown.
+- Funchook source pinned to upstream v1.1.3 commit `88388db3c69e16c1560fee65c6857d75f5ce6fd5`, static PIC build. For the target entry lengths and concrete runtime paths these runs exercised, relocation and ordinary return paths functioned. **This does not establish all ABI or C++ exception unwind paths, asynchronous thread quiescence during uninstall, or ownership/free semantics.**
+- Existing guessed Reset `int64_t` return and Cleanup four-argument declaration remain hypotheses even though normal original-call paths happened to complete. In particular, Reset's caller ignores `RAX`; a returned scalar in the TSV is not a semantic return value.
+- A cleanup-entry event is **not** a child-object destructor or allocator deallocation. No reason to introduce a leak fix before following allocation generations and real frees.
+
+The compiler option remains OFF by default. All full-scope experiments are isolated; production must remain passive/read-only.
