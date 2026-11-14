@@ -24,7 +24,6 @@ using CleanupFn = std::int64_t (*)(std::uintptr_t, std::uintptr_t, std::uintptr_
 CleanupFn g_cleanup = nullptr;
 funchook_t* g_hook = nullptr;
 std::atomic<std::uint64_t> g_deleted{0};
-std::atomic<std::uint64_t> g_bytes{0};
 
 void reclaim_children(std::uintptr_t record) {
     if (!record) return;
@@ -54,7 +53,6 @@ void reclaim_children(std::uintptr_t record) {
         auto destroy = reinterpret_cast<DeletingDestructor>(vtable[1]);
         destroy(reinterpret_cast<void*>(child));
         g_deleted.fetch_add(1, std::memory_order_relaxed);
-        g_bytes.fetch_add(kVerifiedObjectBytes, std::memory_order_relaxed);
     }
 }
 
@@ -127,9 +125,9 @@ public:
             return true;
         }
         if (args[0] == "status") {
-            sender.sendMessage("Obj del: {}\nObj mem: {:.2f} MiB",
-                               g_deleted.load(std::memory_order_relaxed),
-                               g_bytes.load(std::memory_order_relaxed) / 1048576.0);
+            const auto deleted = g_deleted.load(std::memory_order_relaxed);
+            sender.sendMessage("Obj del: {}\\nObj mem: {:.2f} MiB",
+                               deleted, deleted * kVerifiedObjectBytes / 1048576.0);
             return true;
         }
         if (args[0] == "hit") {
