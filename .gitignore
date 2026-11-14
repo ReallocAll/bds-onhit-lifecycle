@@ -1,0 +1,11 @@
+/build/
+/build-*/
+/CMakeFiles/
+/.cache/
+*.so
+*.o
+*.tsv
+*.heap
+*.prof
+*.i64
+bedrock_server

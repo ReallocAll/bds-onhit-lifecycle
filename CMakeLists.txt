@@ -1,0 +1,47 @@
+cmake_minimum_required(VERSION 3.20)
+project(bds_onhit_lifecycle VERSION 0.1.0 LANGUAGES C CXX ASM)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+option(ONHIT_BUILD_PLUGIN "Build Endstone 0.11 plugin" ON)
+option(ONHIT_ENABLE_EXPERIMENTAL_HOOKS "Compile unvalidated isolated-only detours (unsafe for production)" OFF)
+option(ONHIT_BUILD_TESTS "Build standalone identity gate tests" ON)
+
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+
+if(ONHIT_BUILD_PLUGIN)
+    include(FetchContent)
+    FetchContent_Declare(endstone GIT_REPOSITORY https://github.com/EndstoneMC/endstone.git GIT_TAG v0.11.15)
+    FetchContent_MakeAvailable(endstone)
+    if(ONHIT_ENABLE_EXPERIMENTAL_HOOKS)
+        # Use the exact upstream 1.1.3 source, including its pinned diStorm
+        # submodule. Build statically so the isolated BDS needs no extra .so.
+        set(FUNCHOOK_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        set(FUNCHOOK_BUILD_STATIC ON CACHE BOOL "" FORCE)
+        set(FUNCHOOK_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(FUNCHOOK_INSTALL OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(funchook
+            GIT_REPOSITORY https://github.com/kubo/funchook.git
+            GIT_TAG 88388db3c69e16c1560fee65c6857d75f5ce6fd5)
+        FetchContent_MakeAvailable(funchook)
+        set_target_properties(funchook-static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
+    endstone_add_plugin(onhit_lifecycle src/plugin.cpp src/identity.cpp)
+    target_include_directories(onhit_lifecycle PRIVATE include)
+    target_link_libraries(onhit_lifecycle PRIVATE OpenSSL::Crypto)
+    if(ONHIT_ENABLE_EXPERIMENTAL_HOOKS)
+        target_compile_definitions(onhit_lifecycle PRIVATE ONHIT_ENABLE_EXPERIMENTAL_HOOKS=1)
+        target_link_libraries(onhit_lifecycle PRIVATE funchook-static)
+    endif()
+endif()
+
+if(ONHIT_BUILD_TESTS)
+    enable_testing()
+    add_executable(onhit_identity_test tests/identity_test.cpp src/identity.cpp)
+    target_include_directories(onhit_identity_test PRIVATE include)
+    target_link_libraries(onhit_identity_test PRIVATE OpenSSL::Crypto dl)
+    add_test(NAME identity_gate_negative COMMAND onhit_identity_test)
+    add_executable(onhit_trace_test tests/trace_test.cpp)
+    target_include_directories(onhit_trace_test PRIVATE include)
+    add_test(NAME bounded_trace COMMAND onhit_trace_test)
+endif()
