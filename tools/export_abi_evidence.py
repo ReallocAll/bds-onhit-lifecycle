@@ -55,10 +55,10 @@ def main():
         # Match the instruction at the precise EA, not a nearby instruction or
         # a textual mention of the destination elsewhere in the disassembly.
         lines = [line for line in disassembly.splitlines()
-                 if re.match(rf"^\\s*{ea:x}:", line)]
+                 if re.match(rf"^\s*{ea:x}:", line)]
         if len(lines) != 1:
             sys.exit(f"REFUSED: expected exactly one instruction at 0x{ea:x}")
-        match = re.match(r"^\\s*[0-9a-f]+:\\s+((?:[0-9a-f]{2}\\s+)+)\\s*(call|jmp)\\s+([0-9a-f]+)\\b", lines[0])
+        match = re.match(r"^\s*[0-9a-f]+:\s+((?:[0-9a-f]{2}\s+)+)\s*(call|jmp)\s+([0-9a-f]+)\b", lines[0])
         if not match or match.group(2) != opcode or int(match.group(3), 16) != target:
             sys.exit(f"REFUSED: callsite 0x{ea:x} does not branch to expected 0x{target:x}: {lines[0]}")
         raw = bytes.fromhex(match.group(1))
