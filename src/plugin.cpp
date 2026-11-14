@@ -101,30 +101,9 @@ void emit(onhit::EventKind kind, std::uintptr_t record, std::uintptr_t a2,
     e.args[1] = a3;
     e.args[2] = a4;
     e.raw_rax = rax;
-    // Targeted, fixed-size snapshot before opt-in Cleanup reclamation.
-    // Record only pointer values; never dereference child objects here.
-    if (g_fix_cleanup && kind == onhit::EventKind::CleanupEnter && record) {
-        std::uintptr_t begin = 0, end = 0, capacity = 0;
-        std::memcpy(&begin, reinterpret_cast<const void*>(record + 0x120), sizeof(begin));
-        std::memcpy(&end, reinterpret_cast<const void*>(record + 0x128), sizeof(end));
-        std::memcpy(&capacity, reinterpret_cast<const void*>(record + 0x130), sizeof(capacity));
-        if (begin && end >= begin && capacity >= end &&
-            !(begin % alignof(std::uintptr_t)) &&
-            !((end - begin) % sizeof(std::uintptr_t)) &&
-            (end - begin) / sizeof(std::uintptr_t) <= 1024) {
-            const auto count = (end - begin) / sizeof(std::uintptr_t);
-            e.vector_begin = begin;
-            e.vector_end = end;
-            e.vector_capacity = capacity;
-            e.vector_valid = true;
-            e.child_count = static_cast<std::uint32_t>(count);
-            e.captured_children = static_cast<std::uint32_t>(
-                std::min<std::size_t>(count, onhit::kChildrenPerSnapshot));
-            const auto* children = reinterpret_cast<const std::uintptr_t*>(begin);
-            for (std::size_t i = 0; i < e.captured_children; ++i)
-                e.children[i] = children[i];
-        }
-    }
+    // Scalar-only instrumentation until record lifetime, layout and synchronization
+    // are established against the exact target ELF. Never dereference an inferred
+    // record or child vector on an untrusted hook path.
     g_trace.push(e);
     errno = prior_errno;
 }
