@@ -24,6 +24,7 @@ if(ONHIT_BUILD_PLUGIN)
             GIT_REPOSITORY https://github.com/kubo/funchook.git
             GIT_TAG 88388db3c69e16c1560fee65c6857d75f5ce6fd5)
         FetchContent_MakeAvailable(funchook)
+        set_target_properties(funchook-static PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
     endstone_add_plugin(onhit_lifecycle src/plugin.cpp src/identity.cpp)
     target_include_directories(onhit_lifecycle PRIVATE include)
