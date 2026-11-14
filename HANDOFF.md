@@ -1,5 +1,27 @@
 # HANDOFF — BDS OnHit lifecycle investigation
 
+## 2026-11-14 — allocator-level OFF/ON result: CLEANUP_RECLAIM effective for measured stack
+
+**Most recent decision evidence (supersedes earlier “memory efficacy inconclusive” wording):** In standard, isolated BDS 1.26.60.6 / Endstone 0.11.15, candidate `CLEANUP_RECLAIM` eliminated *post-warm-up sampled retained allocations* on the previously identified OnHit-associated raw return stack `0x71439E0`. This is a **positive workload-specific retention result**, not a direct per-object `free` trace, complete ownership proof, or production approval. The original native candidate remains default OFF and is pinned at [OnHit 5a4df6a](https://github.com/ReallocAll/bds-onhit-lifecycle/commit/5a4df6aab689a986eec282a00611af08ec842a7a).
+
+- **OFF:** [Testbed commit 54546ee](https://github.com/ReallocAll/bedrock-testbed/commit/54546ee0f62fd9f0ce71ee8c9dc2b1738a86aa49), [run 43573545076](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43573545076) **PASS**; 24 sustained Shulker rounds, genuine `shulker_bullet` player damage=4, Parse/Reset/Cleanup **175/175** each, **0** patched deleting-destructor calls, 0 dropped/truncated traces and clean shutdown.
+- **ON:** [Testbed commit f50697b](https://github.com/ReallocAll/bedrock-testbed/commit/f50697ba42ec75327de347a0922a98b16515b4a8), [run 43574144248](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43574144248) **PASS**; same 24-round workload, genuine bullet contact, Parse/Reset/Cleanup **177/177** each, **177** nonempty vectors, **708** BDS virtual deleting-destructor calls, 0 dropped/truncated traces and clean shutdown.
+- **Common allocator/profiling:** jemalloc **5.4.0**, official release SHA-256 `200776fac271093e7c2f21edd6d62657ecd2be578d9328633f2a86bfa6ef4f1d`, built `--enable-prof`; `MALLOC_CONF=prof:true,prof_active:false,lg_prof_sample:10,prof_final:false,prof_leak:false`. The process itself confirmed `config.prof=1`, `opt.prof=1`, `opt.lg_prof_sample=10`, successful `prof.dump` and mapped the pinned shared library. Sampling was **activated immediately after confirmed real contact**; `heap_v2/1024` snapshots were taken at warm-up, round 12 and round 24 **within each BDS process**. Same verified BDS ELF SHA-256 `ea16b541a448e07c337848d2c5f37321b706554b5216dd942f3f11e7a8ed2bad`; same main-image raw return EA `0x71439E0`. Existing `tools/heap_v2_summary.py` was reused unchanged.
+
+| Post-activation snapshot | OFF sampled in-use objects on target stack | OFF weighted target `inuse_space` | ON sampled in-use objects on target stack | ON weighted target `inuse_space` |
+|---|---:|---:|---:|---:|
+| Warm-up | 0 | 0 B | 0 | 0 B |
+| Round 12 | 27 | 28,913.511 B | 0 | 0 B |
+| Round 24 | 53 | **56,809.139 B** | 0 | **0 B** |
+
+The sampled-object counts are raw jemalloc in-use **samples**, not an estimate of all concrete objects. Weighted bytes use per-stack Poisson correction. OFF exhibits growing retained target samples, while ON is zero at both stress checkpoints despite globally nonzero profiling samples (round 24: OFF 666, ON 591); this rules out a wholly inactive profiler as the explanation. Matched Cleanup counts differ by only 2 (175 vs 177). **Classification: effective for the measured target retained allocations under this tested workload.**
+
+**Limits / non-claims:** The initial zero is expected because sampling began at the post-contact warm-up boundary; it does not imply the process had no pre-existing allocations. The experiments do not directly intercept allocator deallocation calls, establish exclusive ownership or alias safety, quantify performance overhead, prove no UAF/double-free under untested paths, or prove long-running production stability. The first profiling attempt [43573255192](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43573255192) failed at Python syntax preflight, with no workload/profile measurement; it was corrected in `54546ee`. Do not use `Private_Dirty` to claim causation. Both PRs stay Draft; no merge, production write, deployment or paid infrastructure was used.
+
+**Root decision point:** Retained-allocation efficacy is now demonstrated sufficiently to justify a targeted safety/performance review of this unchanged opt-in candidate, rather than another broad reverse-engineering or memory framework effort. The default-disabled repair must not be deployed until the separate production-acceptance risk is addressed.
+
+---
+
 ## 2026-11-14 — first real cleanup repair candidate and A/B experiments
 
 **Current code:** OnHit `5a4df6aab689a986eec282a00611af08ec842a7a` (Draft PR #5); Testbed `9cfddf4634ba49cdf5d123281dc7ddc00eba1f85` (Draft PR #29). `main` branches unchanged; production strictly read-only. Explicit user authorization now permits minimal reversible **isolated** repair attempts without complete ownership graph proof. Evario J01/J02/J03/J04/J08.
