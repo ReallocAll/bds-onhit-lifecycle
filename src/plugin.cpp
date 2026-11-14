@@ -98,25 +98,17 @@ std::int64_t cleanup_detour(std::uintptr_t record, std::uintptr_t a2,
 
 bool install(std::uintptr_t base, std::string& error) {
     const auto parse = base + kParseEA;
-    const auto reset = base + kResetEA;
-    const auto cleanup = base + kCleanupEA;
-    if (!onhit::executable_address(parse, 16) ||
-        !onhit::executable_address(reset, 16) ||
-        !onhit::executable_address(cleanup, 16)) {
-        error = "candidate entrypoint lies outside an executable ELF segment";
+    if (!onhit::executable_address(parse, 16)) {
+        error = "parse entrypoint lies outside an executable ELF segment";
         return false;
     }
+    // First isolated active run only: one independently GDB-confirmed call
+    // edge. Reset and cleanup ABI hypotheses are not enabled together.
     g_parse = reinterpret_cast<ParseFn>(parse);
-    g_reset = reinterpret_cast<ResetFn>(reset);
-    g_cleanup = reinterpret_cast<CleanupFn>(cleanup);
     g_funchook = funchook_create();
     if (!g_funchook) { error = "funchook_create failed"; return false; }
     if (funchook_prepare(g_funchook, reinterpret_cast<void**>(&g_parse),
                          reinterpret_cast<void*>(&parse_detour)) != FUNCHOOK_ERROR_SUCCESS ||
-        funchook_prepare(g_funchook, reinterpret_cast<void**>(&g_reset),
-                         reinterpret_cast<void*>(&reset_detour)) != FUNCHOOK_ERROR_SUCCESS ||
-        funchook_prepare(g_funchook, reinterpret_cast<void**>(&g_cleanup),
-                         reinterpret_cast<void*>(&cleanup_detour)) != FUNCHOOK_ERROR_SUCCESS ||
         funchook_install(g_funchook, 0) != FUNCHOOK_ERROR_SUCCESS) {
         error = funchook_error_message(g_funchook);
         funchook_destroy(g_funchook);
@@ -162,7 +154,7 @@ public:
             return;
         }
         active_ = true;
-        getLogger().warning("EXPERIMENTAL OnHit hooks active in isolated BDS. Never use on production.");
+        getLogger().warning("EXPERIMENTAL OnHit parse-only hook active in isolated BDS. Never use on production.");
 #endif
     }
 
