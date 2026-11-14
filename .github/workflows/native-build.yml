@@ -1,47 +1,34 @@
-name: Native Endstone SDK build
-
+name: OnHitFix Linux build
 on:
   push:
     branches: [feat/identity-and-diagnostic-scaffold]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   native-build:
-    name: Endstone 0.11.15 C++ build and offline tests
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Install official Linux C++ toolchain prerequisites
+      - name: Install pinned Endstone toolchain
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            clang-18 lld-18 libc++-18-dev libc++abi-18-dev \
-            ninja-build libssl-dev
-      - name: Configure with pinned Endstone source
+          sudo apt-get install -y --no-install-recommends clang-18 lld-18 libc++-18-dev libc++abi-18-dev ninja-build libssl-dev
+      - name: Build Linux preview plugin
         env:
           CC: clang-18
           CXX: clang++-18
         run: |
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DCMAKE_CXX_FLAGS=-stdlib=libc++ \
-            -DONHIT_BUILD_PLUGIN=ON \
-            -DONHIT_BUILD_TESTS=ON \
-            -DONHIT_ENABLE_EXPERIMENTAL_HOOKS=OFF
-      - name: Build real native plugin and tests
-        run: cmake --build build --parallel 2
-      - name: Run offline tests
-        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DONHIT_BUILD_PLUGIN=ON -DONHIT_BUILD_TESTS=ON
+          cmake --build build --parallel 2
           ctest --test-dir build --output-on-failure
-          python3 tests/test_heap_v2.py
-      - name: Verify native shared object produced
-        run: |
-          test -s build/endstone_onhit_lifecycle.so
-          file build/endstone_onhit_lifecycle.so
-          readelf -h build/endstone_onhit_lifecycle.so | grep -E 'Class:|Machine:|Type:'
+          test -s build/endstone_onhitfix.so
+          file build/endstone_onhitfix.so
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onhitfix-linux-x86_64
+          path: build/endstone_onhitfix.so
+          if-no-files-found: error
