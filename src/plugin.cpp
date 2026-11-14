@@ -41,8 +41,6 @@ funchook_t* g_funchook = nullptr;
 bool g_installed = false;
 bool g_fix_candidate = false;
 bool g_fix_cleanup = false;
-// Temporary isolated, read-only observation of Cleanup vectors (no child deletes).
-bool g_alias_probe = false;
 std::atomic<std::uint64_t> g_fix_reclaimed{0};
 std::atomic<std::uint64_t> g_fix_nonempty{0};
 
@@ -103,30 +101,9 @@ void emit(onhit::EventKind kind, std::uintptr_t record, std::uintptr_t a2,
     e.args[1] = a3;
     e.args[2] = a4;
     e.raw_rax = rax;
-    // Targeted, fixed-size snapshot before opt-in Cleanup reclamation.
-    // Record only pointer values; never dereference child objects here.
-    if ((g_fix_cleanup || g_alias_probe) && kind == onhit::EventKind::CleanupEnter && record) {
-        std::uintptr_t begin = 0, end = 0, capacity = 0;
-        std::memcpy(&begin, reinterpret_cast<const void*>(record + 0x120), sizeof(begin));
-        std::memcpy(&end, reinterpret_cast<const void*>(record + 0x128), sizeof(end));
-        std::memcpy(&capacity, reinterpret_cast<const void*>(record + 0x130), sizeof(capacity));
-        if (begin && end >= begin && capacity >= end &&
-            !(begin % alignof(std::uintptr_t)) &&
-            !((end - begin) % sizeof(std::uintptr_t)) &&
-            (end - begin) / sizeof(std::uintptr_t) <= 1024) {
-            const auto count = (end - begin) / sizeof(std::uintptr_t);
-            e.vector_begin = begin;
-            e.vector_end = end;
-            e.vector_capacity = capacity;
-            e.vector_valid = true;
-            e.child_count = static_cast<std::uint32_t>(count);
-            e.captured_children = static_cast<std::uint32_t>(
-                std::min<std::size_t>(count, onhit::kChildrenPerSnapshot));
-            const auto* children = reinterpret_cast<const std::uintptr_t*>(begin);
-            for (std::size_t i = 0; i < e.captured_children; ++i)
-                e.children[i] = children[i];
-        }
-    }
+    // Scalar-only instrumentation until record lifetime, layout and synchronization
+    // are established against the exact target ELF. Never dereference an inferred
+    // record or child vector on an untrusted hook path.
     g_trace.push(e);
     errno = prior_errno;
 }
@@ -234,14 +211,11 @@ public:
             return;
         }
         active_ = true;
-        const char* alias = std::getenv("BDS_ONHIT_ALIAS_PROBE");
-        g_alias_probe = full && alias && std::string_view(alias) == "1";
         const char* fix = std::getenv("BDS_ONHIT_FIX_CANDIDATE");
         g_fix_cleanup = full && fix &&
             std::string_view(fix) == "CLEANUP_RECLAIM";
         g_fix_candidate = full && fix &&
             (std::string_view(fix) == "PARSE_RECLAIM" || g_fix_cleanup);
-        if (g_alias_probe) getLogger().warning("ONHIT_ALIAS_PROBE enabled; reclamation must remain disabled");
         if (g_fix_candidate) {
             getLogger().warning("ONHIT_FIX_CANDIDATE_ENABLED {}_reclaim",
                                 g_fix_cleanup ? "cleanup" : "parse");
