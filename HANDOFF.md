@@ -1,3 +1,15 @@
+## 2026-11-14 — targeted CLEANUP_RECLAIM safety review / isolated lifecycle PASS
+
+**Scope:** One targeted safety inspection and one isolated exact-ELF run. Native candidate unchanged at `5a4df6a`, still opt-in/default OFF. Both PRs remain Draft; no production or main changes.
+
+- **Source review:** `cleanup_detour` invokes `reclaim_children(record)` before `g_cleanup`. Itanium slot-1 deleting destructor is used for each unique pointer *inside that vector*. Raw slots are not cleared, and no cross-record ownership/alias protection exists.
+- **Exact BDS original Cleanup:** [Run 43575934372](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43575934372) exports the function body `0x7757840..0x775792a`. At `0x77578f5` it reads vector begin `[rbx+0x120]`; at `0x7757901` sets end to begin; at `0x7757908..0x7757912` computes capacity span and calls `0x41fab30` for backing allocation deallocation. There is no direct child-pointer dereference, per-child iteration or second deleting-destructor call in this body. The other indirect callees were not exhaustively investigated; no global ownership assertion follows. Earlier archived evidence reports potential shallow copies from `0x7757f60`.
+- **Focused real-run check:** [Testbed 96c2447](https://github.com/ReallocAll/bedrock-testbed/commit/96c24477833eeab99460572cc171b897ce0f8e73) / [Actions 43575934372](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43575934372) PASS on standard public `ubuntu-24.04`, BDS 1.26.60.6 exact SHA `ea16b541a448e07c337848d2c5f37321b706554b5216dd942f3f11e7a8ed2bad`, Endstone 0.11.15, pinned native `5a4df6a`. Six real Shulker rounds; confirmed live bullet, removed the simulated player and verified BDS player-list absence; recreated same name, confirmed a second actual projectile damage event, and stopped normally.
+- **Trace:** Parse/Reset/Cleanup 55 enter and 55 exit each; 55 nonempty cleanup vectors; 220 deleting-destructor entries; 330 trace events, dropped=0, truncated=0. No crash or failed shutdown in this exercised path.
+- **Conclusion / remaining risk:** No direct double-delete in inspected original Cleanup or UAF symptom in this specific run. Cross-record aliases and consumers, exception/unwind, concurrent lifetime, precise allocator frees and long-term stability remain unproven. Do not infer comprehensive memory safety. Existing OFF/ON allocator evidence (43573545076 / 43574144248) is unchanged; this was not a memory-efficacy benchmark.
+- **Decision:** No speculative ownership tracker or candidate change. Keep default OFF, both PRs Draft, no production deployment, no merge, no main modification and no paid resources.
+
+---
 # HANDOFF — BDS OnHit lifecycle investigation
 
 ## 2026-11-14 — allocator-level OFF/ON result: CLEANUP_RECLAIM effective for measured stack
