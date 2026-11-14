@@ -126,7 +126,7 @@ public:
         }
         if (args[0] == "status") {
             const auto deleted = g_deleted.load(std::memory_order_relaxed);
-            sender.sendMessage("Obj del: {}\\nObj mem: {:.2f} MiB",
+            sender.sendMessage("Obj del: {}\nObj mem: {:.2f} MiB",
                                deleted, deleted * kVerifiedObjectBytes / 1048576.0);
             return true;
         }
