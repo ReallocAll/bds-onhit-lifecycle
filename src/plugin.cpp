@@ -96,19 +96,32 @@ std::int64_t cleanup_detour(std::uintptr_t record, std::uintptr_t a2,
     return raw;
 }
 
-bool install(std::uintptr_t base, std::string& error) {
+bool install(std::uintptr_t base, bool full_lifecycle, std::string& error) {
     const auto parse = base + kParseEA;
-    if (!onhit::executable_address(parse, 16)) {
-        error = "parse entrypoint lies outside an executable ELF segment";
+    const auto reset = base + kResetEA;
+    const auto cleanup = base + kCleanupEA;
+    if (!onhit::executable_address(parse, 16) ||
+        (full_lifecycle && (!onhit::executable_address(reset, 16) ||
+                            !onhit::executable_address(cleanup, 16)))) {
+        error = "requested hook entrypoint lies outside an executable ELF segment";
         return false;
     }
-    // First isolated active run only: one independently GDB-confirmed call
-    // edge. Reset and cleanup ABI hypotheses are not enabled together.
+    // Parse-only remains the baseline. Both additional signatures are
+    // hypotheses and may only be exercised by explicitly isolated CI.
     g_parse = reinterpret_cast<ParseFn>(parse);
+    if (full_lifecycle) {
+        g_reset = reinterpret_cast<ResetFn>(reset);
+        g_cleanup = reinterpret_cast<CleanupFn>(cleanup);
+    }
     g_funchook = funchook_create();
     if (!g_funchook) { error = "funchook_create failed"; return false; }
     if (funchook_prepare(g_funchook, reinterpret_cast<void**>(&g_parse),
                          reinterpret_cast<void*>(&parse_detour)) != FUNCHOOK_ERROR_SUCCESS ||
+        (full_lifecycle &&
+         (funchook_prepare(g_funchook, reinterpret_cast<void**>(&g_reset),
+                           reinterpret_cast<void*>(&reset_detour)) != FUNCHOOK_ERROR_SUCCESS ||
+          funchook_prepare(g_funchook, reinterpret_cast<void**>(&g_cleanup),
+                           reinterpret_cast<void*>(&cleanup_detour)) != FUNCHOOK_ERROR_SUCCESS)) ||
         funchook_install(g_funchook, 0) != FUNCHOOK_ERROR_SUCCESS) {
         error = funchook_error_message(g_funchook);
         funchook_destroy(g_funchook);
@@ -148,13 +161,17 @@ public:
             getLogger().warning("Detours inactive: isolated-test environment opt-in absent.");
             return;
         }
+        const char* scope = std::getenv("BDS_ONHIT_HOOK_SCOPE");
+        const bool full = scope && std::string_view(scope) == "all";
         std::string error;
-        if (!install(identity.load_bias, error)) {
+        if (!install(identity.load_bias, full, error)) {
             getLogger().error("Diagnostic detour installation failed: {}", error);
             return;
         }
         active_ = true;
-        getLogger().warning("EXPERIMENTAL OnHit parse-only hook active in isolated BDS. Never use on production.");
+        getLogger().warning(
+            "EXPERIMENTAL OnHit {} hook active in isolated BDS. Never use on production.",
+            full ? "lifecycle" : "parse-only");
 #endif
     }
 
