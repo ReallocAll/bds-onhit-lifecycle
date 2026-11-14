@@ -13,8 +13,14 @@ import sys
 EXPECTED_SHA256 = "ea16b541a448e07c337848d2c5f37321b706554b5216dd942f3f11e7a8ed2bad"
 EXPECTED_BUILD_ID = "52576b75b6af5a09a6bde582be804e29657dbbf3"
 ENTRIES = {"reset": 0x7143370, "parse": 0x7143660, "cleanup": 0x7757840}
-CALLSITES = [0xB38FE01, 0x7757F05, 0x7756A0E, 0x7756A24,
-             0x7756AD7, 0x7756B98, 0x7758522, 0x77569D0]
+CALLSITES = {0xB38FE01: ("call", ENTRIES["parse"]),
+             0x7757F05: ("call", ENTRIES["reset"]),
+             0x7756A0E: ("call", ENTRIES["cleanup"]),
+             0x7756A24: ("call", ENTRIES["cleanup"]),
+             0x7756AD7: ("call", ENTRIES["cleanup"]),
+             0x7756B98: ("call", ENTRIES["cleanup"]),
+             0x7758522: ("call", ENTRIES["cleanup"]),
+             0x77569D0: ("jmp", ENTRIES["cleanup"])}
 
 
 def run(*args):
@@ -42,10 +48,25 @@ def main():
         print(f"\n=== {name} entry 0x{ea:x} (raw bytes and instructions) ===")
         print(run("objdump", "-d", "-M", "intel", "--show-raw-insn",
                   f"--start-address={ea}", f"--stop-address={ea+128}", str(path)))
-    for ea in CALLSITES:
+    for ea, (opcode, target) in CALLSITES.items():
         print(f"\n=== callsite vicinity 0x{ea:x} ===")
-        print(run("objdump", "-d", "-M", "intel", "--show-raw-insn",
-                  f"--start-address={ea-64}", f"--stop-address={ea+64}", str(path)))
+        disassembly = run("objdump", "-d", "-M", "intel", "--show-raw-insn",
+                          f"--start-address={ea}", f"--stop-address={ea+16}", str(path))
+        # Match the instruction at the precise EA, not a nearby instruction or
+        # a textual mention of the destination elsewhere in the disassembly.
+        lines = [line for line in disassembly.splitlines()
+                 if re.match(rf"^\\s*{ea:x}:", line)]
+        if len(lines) != 1:
+            sys.exit(f"REFUSED: expected exactly one instruction at 0x{ea:x}")
+        match = re.match(r"^\\s*[0-9a-f]+:\\s+((?:[0-9a-f]{2}\\s+)+)\\s*(call|jmp)\\s+([0-9a-f]+)\\b", lines[0])
+        if not match or match.group(2) != opcode or int(match.group(3), 16) != target:
+            sys.exit(f"REFUSED: callsite 0x{ea:x} does not branch to expected 0x{target:x}: {lines[0]}")
+        raw = bytes.fromhex(match.group(1))
+        expected_prefix = 0xe8 if opcode == "call" else 0xe9
+        if len(raw) != 5 or raw[0] != expected_prefix or ea + 5 + int.from_bytes(raw[1:], "little", signed=True) != target:
+            sys.exit(f"REFUSED: callsite 0x{ea:x} has unexpected branch encoding")
+        print(f"Verified {opcode} at 0x{ea:x} -> 0x{target:x}")
+        print(disassembly)
     print("\nReview register and stack dataflow beyond each window; no automatic ABI verdict.")
 
 
