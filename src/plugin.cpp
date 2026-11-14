@@ -40,14 +40,16 @@ CleanupFn g_cleanup = nullptr;
 funchook_t* g_funchook = nullptr;
 bool g_installed = false;
 bool g_fix_candidate = false;
+bool g_fix_cleanup = false;
 std::atomic<std::uint64_t> g_fix_reclaimed{0};
+std::atomic<std::uint64_t> g_fix_nonempty{0};
 
-// Isolated, opt-in first repair hypothesis: parse rewinds the raw-pointer
-// vector, abandoning any prior children. Use the child's BDS deleting
+// Isolated, opt-in repair hypothesis: parse or cleanup may abandon the
+// raw-pointer vector. Use the child's BDS deleting
 // destructor (Itanium vtable slot 1), not the plugin's C++ delete operator.
 // This is intentionally limited to the parse boundary; no generic ownership
 // tracker, allocator interception, or assumptions about other containers.
-void reclaim_before_parse(std::uintptr_t record) {
+void reclaim_children(std::uintptr_t record) {
     if (!g_fix_candidate || !record) return;
     std::uintptr_t begin = 0, end = 0, capacity = 0;
     std::memcpy(&begin, reinterpret_cast<const void*>(record + 0x120), sizeof(begin));
@@ -59,6 +61,7 @@ void reclaim_before_parse(std::uintptr_t record) {
         (end - begin) / sizeof(std::uintptr_t) > 1024) return;
     auto* children = reinterpret_cast<const std::uintptr_t*>(begin);
     const auto count = (end - begin) / sizeof(std::uintptr_t);
+    if (count) g_fix_nonempty.fetch_add(1, std::memory_order_relaxed);
     for (std::size_t i = 0; i < count; ++i) {
         const auto child = children[i];
         if (!child) continue;
@@ -110,7 +113,7 @@ void emit(onhit::EventKind kind, std::uintptr_t record, std::uintptr_t a2,
 std::uint64_t parse_detour(std::uintptr_t record, std::uintptr_t context) {
     const auto caller = reinterpret_cast<std::uintptr_t>(__builtin_return_address(0));
     emit(onhit::EventKind::ParseEnter, record, context, 0, 0, 0, caller);
-    reclaim_before_parse(record);
+    if (g_fix_candidate && !g_fix_cleanup) reclaim_children(record);
     const auto raw = g_parse(record, context);
     emit(onhit::EventKind::ParseExit, record, context, 0, 0, raw, caller);
     return raw;
@@ -128,6 +131,7 @@ std::int64_t cleanup_detour(std::uintptr_t record, std::uintptr_t a2,
                             std::uintptr_t a3, std::uintptr_t a4) {
     const auto caller = reinterpret_cast<std::uintptr_t>(__builtin_return_address(0));
     emit(onhit::EventKind::CleanupEnter, record, a2, a3, a4, 0, caller);
+    if (g_fix_cleanup) reclaim_children(record);
     const auto raw = g_cleanup(record, a2, a3, a4);
     emit(onhit::EventKind::CleanupExit, record, a2, a3, a4,
          static_cast<std::uint64_t>(raw), caller);
@@ -208,10 +212,13 @@ public:
         }
         active_ = true;
         const char* fix = std::getenv("BDS_ONHIT_FIX_CANDIDATE");
+        g_fix_cleanup = full && fix &&
+            std::string_view(fix) == "CLEANUP_RECLAIM";
         g_fix_candidate = full && fix &&
-            std::string_view(fix) == "PARSE_RECLAIM";
+            (std::string_view(fix) == "PARSE_RECLAIM" || g_fix_cleanup);
         if (g_fix_candidate) {
-            getLogger().warning("ONHIT_FIX_CANDIDATE_ENABLED parse_reclaim");
+            getLogger().warning("ONHIT_FIX_CANDIDATE_ENABLED {}_reclaim",
+                                g_fix_cleanup ? "cleanup" : "parse");
         }
         getLogger().warning(
             "EXPERIMENTAL OnHit {} hook active in isolated BDS. Never use on production.",
@@ -243,15 +250,19 @@ public:
         if (!active_) return;
         uninstall();
         active_ = false;
-        getLogger().info("ONHIT_FIX_CANDIDATE_RESULT enabled={} reclaimed={}",
-                         g_fix_candidate, g_fix_reclaimed.load(std::memory_order_relaxed));
+        getLogger().info("ONHIT_FIX_CANDIDATE_RESULT enabled={} site={} nonempty={} reclaimed={}",
+                         g_fix_candidate, g_fix_cleanup ? "cleanup" : "parse",
+                         g_fix_nonempty.load(std::memory_order_relaxed),
+                         g_fix_reclaimed.load(std::memory_order_relaxed));
         const auto path = getDataFolder() / "trace.tsv";
         std::error_code ignored;
         std::filesystem::create_directories(path.parent_path(), ignored);
         std::ofstream out(path, std::ios::trunc);
         if (!out) { getLogger().error("Could not open trace file: {}", path.string()); return; }
         out << "#diagnostic_only=1;target_sha256=" << onhit::kExpectedSha256 << '\n';
-        out << "#fix_candidate=" << g_fix_candidate << ";reclaimed="
+        out << "#fix_candidate=" << g_fix_candidate << ";site="
+            << (g_fix_cleanup ? "cleanup" : "parse") << ";nonempty="
+            << g_fix_nonempty.load(std::memory_order_relaxed) << ";reclaimed="
             << g_fix_reclaimed.load(std::memory_order_relaxed) << '\n';
         out << "#attempted=" << g_trace.attempted() << ";dropped=" << g_trace.dropped()
             << ";truncated_child_pointers=" << g_trace.truncated_children() << '\n';
