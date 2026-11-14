@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(bds_onhit_lifecycle VERSION 0.1.0 LANGUAGES CXX)
+project(bds_onhit_lifecycle VERSION 0.1.0 LANGUAGES C CXX ASM)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -14,14 +14,23 @@ if(ONHIT_BUILD_PLUGIN)
     FetchContent_Declare(endstone GIT_REPOSITORY https://github.com/EndstoneMC/endstone.git GIT_TAG v0.11.15)
     FetchContent_MakeAvailable(endstone)
     if(ONHIT_ENABLE_EXPERIMENTAL_HOOKS)
-        find_package(funchook CONFIG REQUIRED) # Conan: funchook/1.1.3
+        # Use the exact upstream 1.1.3 source, including its pinned diStorm
+        # submodule. Build statically so the isolated BDS needs no extra .so.
+        set(FUNCHOOK_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+        set(FUNCHOOK_BUILD_STATIC ON CACHE BOOL "" FORCE)
+        set(FUNCHOOK_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(FUNCHOOK_INSTALL OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(funchook
+            GIT_REPOSITORY https://github.com/kubo/funchook.git
+            GIT_TAG 88388db3c69e16c1560fee65c6857d75f5ce6fd5)
+        FetchContent_MakeAvailable(funchook)
     endif()
     endstone_add_plugin(onhit_lifecycle src/plugin.cpp src/identity.cpp)
     target_include_directories(onhit_lifecycle PRIVATE include)
     target_link_libraries(onhit_lifecycle PRIVATE OpenSSL::Crypto)
     if(ONHIT_ENABLE_EXPERIMENTAL_HOOKS)
         target_compile_definitions(onhit_lifecycle PRIVATE ONHIT_ENABLE_EXPERIMENTAL_HOOKS=1)
-        target_link_libraries(onhit_lifecycle PRIVATE funchook::funchook)
+        target_link_libraries(onhit_lifecycle PRIVATE funchook-static)
     endif()
 endif()
 
