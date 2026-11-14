@@ -1,5 +1,19 @@
 # HANDOFF — BDS OnHit lifecycle investigation
 
+## 2026-11-14 — first real cleanup repair candidate and A/B experiments
+
+**Current code:** OnHit `5a4df6aab689a986eec282a00611af08ec842a7a` (Draft PR #5); Testbed `9cfddf4634ba49cdf5d123281dc7ddc00eba1f85` (Draft PR #29). `main` branches unchanged; production strictly read-only. Explicit user authorization now permits minimal reversible **isolated** repair attempts without complete ownership graph proof. Evario J01/J02/J03/J04/J08.
+
+- Candidate 1 (`768d085`): opt-in `PARSE_RECLAIM` before original Parse, calling the BDS virtual deleting-destructor through the child's Itanium vtable slot 1. Official native build [43568345199](https://github.com/ReallocAll/bds-onhit-lifecycle/actions/runs/43568345199) PASS; isolated [A/B 43568439594](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43568439594) PASS gameplay and shutdown but **zero destructor calls** despite 10 Parse events. No demonstrated effect.
+- Candidate 2 (`5a4df6a`): same minimal helper invoked **before Cleanup**, with `BDS_ONHIT_FIX_CANDIDATE=CLEANUP_RECLAIM`, full existing funchook and explicit isolated opt-in. Default OFF. Official Endstone build [43568711029](https://github.com/ReallocAll/bds-onhit-lifecycle/actions/runs/43568711029) PASS. Short isolated [A/B 43568735284](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43568735284) PASS; ON observed 5 nonempty record vectors, **20 BDS virtual deleting-destructor calls**, real Shulker bullet damage, graceful shutdown, zero trace loss. OFF made 0 calls.
+- Rapid [270-summon A/B 43569116025](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43569116025) PASS but **invalid for OnHit stress**: Shulkers were killed too rapidly; only 3–4 Parse entries. Do not use its memory samples to claim a fix.
+- Valid sustained [24-round live Shulker A/B 43569472112](https://github.com/ReallocAll/bedrock-testbed/actions/runs/43569472112) **PASS both jobs** (real contact, normal stop, zero dropped). OFF had Parse/Reset/Cleanup 186/186 each and **0** patch destructor calls. ON had Parse/Reset/Cleanup 191/191 each, **191 nonempty cleanup vectors, 764 deleting-destructor calls**. Exact BDS SHA/Build ID and official Endstone 0.11.15 verified.
+- Sustained within-process `/proc/PID/smaps_rollup` Private_Dirty from post-contact to final: OFF **534,920 → 529,928 KiB** (-4,992), ON **518,520 → 507,640 KiB** (-10,880). Both groups declined, with fresh-runner differences; rounds 9→24 actually increased similarly (**OFF +180 KiB; ON +204 KiB**). This is **not** sufficient to claim causal OnHit retained-memory improvement or an eliminated leak. Virtual deleting-destructor entry count is not a verified final `free` count. No weighted jemalloc OnHit-specific A/B snapshot exists.
+
+**Next highest-value action:** Use the proven Cleanup candidate and live-projectile workload to obtain an OnHit-relevant retained-allocation metric or increase the same workload for a measurable baseline growth; compare with candidate OFF/ON at similar actual lifecycle counts. Do not add generic allocators, ownership maps, or unrelated tests. Keep the candidate off by default and both PRs Draft. Never deploy experimental hook to production.
+
+---
+
 Updated 2026-11-14 (Asia/Taipei). This public GitHub repository is the project state record. Supplement it with original `IMPLEMENTATION_HANDOFF_PACKAGE.zip` (SHA-256 `9d7ab8b6f23948089ae05f8754d622f40c9dcfaead886281ef864d7b4612360f`).
 
 ## 2026-11-14 14:19 Asia/Taipei — live funchook Parse/Reset/Cleanup verified in isolated BDS
